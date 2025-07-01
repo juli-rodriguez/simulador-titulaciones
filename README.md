@@ -2,7 +2,7 @@
 
 Este simulador fue creado con fines didacticos.
 
-Para utilizarlo dirijase a https://juli-rodriguez.github.io/simulador-titulaciones/ o descargue el archivo [index.html](index.html) para acceder al mismo sin conexión.
+Para utilizarlo dirijase a https://juli-rodriguez.github.io/simulador-titulaciones/ o descargue el archivo [index.html](https://raw.githubusercontent.com/juli-rodriguez/simulador-titulaciones/refs/heads/main/index.html) para acceder al mismo sin conexión.
 
 ## Herramientas Utilizadas
 * **HTML5**
