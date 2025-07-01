@@ -2,6 +2,8 @@
 
 Este simulador fue creado con fines didacticos.
 
+Para utilizarlo dirijase a https://juli-rodriguez.github.io/simulador-titulaciones/ o descargue el archivo [index.html](index.html) para acceder al mismo sin conexión.
+
 ## Herramientas Utilizadas
 * **HTML5**
 * **CSS** con **Tailwind CSS** para el diseño de la interfaz.
