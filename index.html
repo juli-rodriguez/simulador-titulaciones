@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Curvas de Titulación Ácido-Base</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .control-panel {
+            scrollbar-width: thin;
+            scrollbar-color: #4a5568 #2d3748;
+        }
+        .control-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        .control-panel::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        .control-panel::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+            border-radius: 10px;
+            border: 2px solid #2d3748;
+        }
+        input[type="text"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="flex flex-col md:flex-row h-screen">
+        <!-- Panel de Control -->
+        <div class="w-full md:w-1/3 lg:w-1/4 p-4 sm:p-6 bg-gray-800 shadow-lg overflow-y-auto control-panel" id="control-form">
+            <h1 class="text-xl sm:text-2xl font-bold mb-6 text-cyan-400">
+                <span class="block sm:inline">Titulación </span>
+                <span class="block sm:inline whitespace-nowrap">ácido-base</span>
+            </h1>
+            
+            <div class="space-y-6">
+                <!-- Analito -->
+                <div>
+                    <h2 class="text-lg font-semibold border-b-2 border-cyan-500 pb-2 mb-4">Analito</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col">
+                            <label for="analyte-conc" class="block text-sm font-medium mb-1">Concentración (M)</label>
+                            <input type="text" id="analyte-conc" value="0,1" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-auto">
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="analyte-vol" class="block text-sm font-medium mb-1">Volumen (mL)</label>
+                            <input type="text" id="analyte-vol" value="25" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-auto">
+                        </div>
+                        <div>
+                            <label for="analyte-type" class="block text-sm font-medium mb-1">Tipo</label>
+                            <select id="analyte-type" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:ring-cyan-500 focus:border-cyan-500">
+                                <option value="acid">Ácido</option>
+                                <option value="base">Base</option>
+                            </select>
+                        </div>
+                        <div>
+                           <label for="analyte-strength" class="block text-sm font-medium mb-1">Fuerza</label>
+                            <select id="analyte-strength" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:ring-cyan-500 focus:border-cyan-500">
+                                <option value="strong">Fuerte</option>
+                                <option value="weak">Débil</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Constantes del Analito Débil -->
+                <div id="weak-analyte-constants" class="hidden">
+                    <h3 class="text-md font-semibold mb-2" id="weak-analyte-header">Constantes del ácido débil</h3>
+                    <div id="ka-inputs-container">
+                        <div class="flex items-center gap-2 mb-2">
+                           <label for="ka1" id="ka1-label" class="block text-sm font-medium w-10">Ka1:</label>
+                           <input type="text" id="ka1" value="1,8e-5" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2">
+                        </div>
+                    </div>
+                    <button id="add-ka" class="text-sm mt-2 bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded-md transition-colors">+ Añadir Ka</button>
+                    <button id="remove-ka" class="text-sm mt-2 bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded-md transition-colors hidden">- Quitar Ka</button>
+                </div>
+
+                <!-- Titulante -->
+                <div>
+                    <h2 class="text-lg font-semibold border-b-2 border-cyan-500 pb-2 mb-4">Titulante</h2>
+                     <div>
+                        <label for="titrant-conc" class="block text-sm font-medium mb-1">Concentración (M)</label>
+                        <input type="text" id="titrant-conc" value="0,1" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:ring-cyan-500 focus:border-cyan-500">
+                        <p id="titrant-type-display" class="text-sm mt-2 text-gray-400">El titulante es una base fuerte.</p>
+                    </div>
+                </div>
+                
+                 <!-- Solvente -->
+                <div>
+                    <h2 class="text-lg font-semibold border-b-2 border-cyan-500 pb-2 mb-4">Solvente</h2>
+                    <div>
+                        <label for="kw-input" id="kw-label" class="block text-sm font-medium mb-1">Kw</label>
+                        <input type="text" id="kw-input" value="1e-14" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    </div>
+                </div>
+                
+                <!-- Opciones de Gráfico -->
+                <div id="speciation-options-container" class="hidden">
+                    <h2 class="text-lg font-semibold border-b-2 border-cyan-500 pb-2 mb-4">Opciones de gráfico</h2>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="show-speciation-checkbox" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-cyan-600 focus:ring-cyan-500">
+                        <label for="show-speciation-checkbox" class="text-sm font-medium">Mostrar diagrama de especiación</label>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="pt-4 space-y-3">
+                    <button id="add-to-chart-btn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+                        Añadir al gráfico
+                    </button>
+                    <button id="clear-btn" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+                        Limpiar gráfico
+                    </button>
+                </div>
+                 <p id="error-message" class="text-red-400 text-sm mt-4"></p>
+            </div>
+        </div>
+
+        <!-- Área de Gráficos -->
+        <div class="w-full md:w-2/3 lg:w-3/4 p-4 sm:p-6 flex flex-col flex-grow">
+            <div id="titration-chart-container" class="w-full relative h-full">
+                <canvas id="titration-chart"></canvas>
+            </div>
+            <div id="speciation-chart-container" class="w-full relative mt-4 h-full hidden">
+                 <canvas id="speciation-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- GESTIÓN DE ESTADO ---
+            let savedSimulations = [];
+            let titrationChart, speciationChart;
+            let kaCount = 1;
+            const colors = ['#34d399', '#fbbf24', '#f87171', '#60a5fa', '#a78bfa', '#ec4899', '#2dd4bf'];
+            const speciationColors = ['#fde047', '#a78bfa', '#60a5fa', '#f87171', '#34d399' ];
+            let savedCurveColorIndex = 0;
+            let previousCurrentData = [];
+            let animationFrameId = null;
+
+            // --- ELEMENTOS DEL DOM ---
+            const controlForm = document.getElementById('control-form');
+            const weakAnalyteConstantsEl = document.getElementById('weak-analyte-constants');
+            const weakAnalyteHeaderEl = document.getElementById('weak-analyte-header');
+            const kaInputsContainerEl = document.getElementById('ka-inputs-container');
+            const addKaBtn = document.getElementById('add-ka');
+            const removeKaBtn = document.getElementById('remove-ka');
+            const titrantTypeDisplayEl = document.getElementById('titrant-type-display');
+            const errorMessageEl = document.getElementById('error-message');
+            const titrationCtx = document.getElementById('titration-chart').getContext('2d');
+            const speciationCtx = document.getElementById('speciation-chart').getContext('2d');
+            const showSpeciationCheckbox = document.getElementById('show-speciation-checkbox');
+            const speciationOptionsContainer = document.getElementById('speciation-options-container');
+            const titrationChartContainer = document.getElementById('titration-chart-container');
+            const speciationChartContainer = document.getElementById('speciation-chart-container');
+            
+            // --- FUNCIONES AUXILIARES ---
+            const parseInput = (id) => {
+                const value = document.getElementById(id).value.replace(',', '.');
+                return parseFloat(value);
+            };
+
+            const toSuperscript = (num) => {
+                const chars = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+                return String(num).split('').map(char => chars[char]).join('');
+            };
+
+            // --- LÓGICA DE ANIMACIÓN ---
+            const findYatX = (data, x) => {
+                if (!data || data.length === 0) return NaN;
+                if (x <= data[0].x) return data[0].y;
+                if (x >= data[data.length - 1].x) return data[data.length - 1].y;
+                for (let i = 0; i < data.length - 1; i++) {
+                    const p1 = data[i], p2 = data[i + 1];
+                    if (x >= p1.x && x <= p2.x) {
+                        if (p2.x - p1.x === 0) return p1.y;
+                        const slope = (p2.y - p1.y) / (p2.x - p1.x);
+                        return p1.y + slope * (x - p1.x);
+                    }
+                }
+                return NaN;
+            };
+            
+            const findXatY = (data, y) => {
+                if (!data || data.length < 2) return NaN;
+                const firstY = data[0].y, lastY = data[data.length - 1].y;
+                if ((firstY < lastY && y < firstY) || (firstY > lastY && y > firstY)) {
+                    const p1 = data[0], p2 = data[1];
+                    if (p2.y - p1.y === 0) return p1.x;
+                    const inverseSlope = (p2.x - p1.x) / (p2.y - p1.y);
+                    return p1.x + inverseSlope * (y - p1.y);
+                }
+                if ((lastY > firstY && y > lastY) || (lastY < firstY && y < lastY)) {
+                    const p1 = data[data.length - 2], p2 = data[data.length - 1];
+                    if (p2.y - p1.y === 0) return p2.x;
+                    const inverseSlope = (p2.x - p1.x) / (p2.y - p1.y);
+                    return p2.x + inverseSlope * (y - p2.y);
+                }
+                for (let i = 0; i < data.length - 1; i++) {
+                    const p1 = data[i], p2 = data[i + 1];
+                    if ((y >= p1.y && y <= p2.y) || (y <= p1.y && y >= p2.y)) {
+                        if (p2.y - p1.y === 0) return p1.x;
+                        const inverseSlope = (p2.x - p1.x) / (p2.y - p1.y);
+                        return p1.x + inverseSlope * (y - p1.y);
+                    }
+                }
+                return data[data.length - 1].x;
+            };
+            
+            const animateCurveTransition = (startData, endData, targetDataset, chart, animationType) => {
+                const duration = 400;
+                let startTime = null;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+                function animationStep(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const progress = Math.min((timestamp - startTime) / duration, 1);
+                    let interpolatedData;
+                    if (animationType === 'horizontal') {
+                        interpolatedData = endData.map(endPoint => {
+                            const x_end = endPoint.x, x_start = findXatY(startData, endPoint.y);
+                            if (isNaN(x_start) || isNaN(x_end)) return { x: endPoint.x, y: endPoint.y };
+                            const x_interpolated = x_start + (x_end - x_start) * progress;
+                            return { x: x_interpolated, y: endPoint.y };
+                        });
+                    } else {
+                        interpolatedData = endData.map(endPoint => {
+                            const y_end = endPoint.y, y_start = findYatX(startData, endPoint.x);
+                            if (isNaN(y_start) || isNaN(y_end)) return { x: endPoint.x, y: endPoint.y };
+                            const y_interpolated = y_start + (y_end - y_start) * progress;
+                            return { x: endPoint.x, y: y_interpolated };
+                        });
+                    }
+                    targetDataset.data = interpolatedData;
+                    chart.update('none');
+                    if (progress < 1) {
+                        animationFrameId = requestAnimationFrame(animationStep);
+                    } else {
+                        animationFrameId = null;
+                        targetDataset.data = endData;
+                        chart.update('none');
+                    }
+                }
+                animationFrameId = requestAnimationFrame(animationStep);
+            };
+
+            // --- LÓGICA PRINCIPAL ---
+            const updateKaLabels = (analyteType) => {
+                const constant = analyteType === 'acid' ? 'Ka' : 'Kb';
+                for (let i = 1; i <= kaCount; i++) {
+                    const label = document.getElementById(`ka${i}-label`);
+                    if (label) label.textContent = `${constant}${kaCount > 1 ? i : ''}:`;
+                }
+            };
+
+            const toggleSpeciationChart = (show) => {
+                speciationChartContainer.classList.toggle('hidden', !show);
+                titrationChartContainer.classList.toggle('h-full', !show);
+                titrationChartContainer.classList.toggle('h-2/3', show);
+                speciationChartContainer.classList.toggle('h-1/3', show);
+                
+                titrationChart.options.scales.x.ticks.display = !show;
+                titrationChart.options.scales.x.title.display = !show;
+
+                titrationChart.update();
+                speciationChart.update();
+            };
+            
+            const updateUI = () => {
+                const analyteType = document.getElementById('analyte-type').value;
+                const analyteStrength = document.getElementById('analyte-strength').value;
+                if (titrantTypeDisplayEl) titrantTypeDisplayEl.textContent = analyteType === 'base' ? 'El titulante es un ácido fuerte.' : 'El titulante es una base fuerte.';
+                
+                const isWeak = analyteStrength === 'weak';
+                weakAnalyteConstantsEl.classList.toggle('hidden', !isWeak);
+                speciationOptionsContainer.classList.toggle('hidden', !isWeak);
+                if (isWeak) {
+                    const constant = analyteType === 'acid' ? 'Ka' : 'Kb';
+                    const species = analyteType === 'acid' ? 'ácido' : 'base';
+                    const article = analyteType === 'acid' ? 'del' : 'de la';
+                    weakAnalyteHeaderEl.textContent = `Constantes ${article} ${species} débil`;
+                    addKaBtn.textContent = `+ Añadir ${constant}`;
+                    removeKaBtn.textContent = `- Quitar ${constant}`;
+                    updateKaLabels(analyteType);
+                } else if (showSpeciationCheckbox.checked) {
+                    showSpeciationCheckbox.checked = false;
+                    toggleSpeciationChart(false);
+                }
+            };
+
+            const calculateAlphaFractions = (H, Kas) => {
+                const numProtons = Kas.length;
+                let D = Math.pow(H, numProtons);
+                let ka_product = 1;
+                const terms = [Math.pow(H, numProtons)];
+                for (let i = 0; i < numProtons; i++) {
+                    ka_product *= Kas[i];
+                    const term = ka_product * Math.pow(H, numProtons - (i + 1));
+                    D += term;
+                    terms.push(term);
+                }
+                if (D === 0) return new Array(numProtons + 1).fill(0);
+                return terms.map(term => term / D);
+            };
+            
+            const calculatePhForAcidTitration = (Ca, Va_ml, Cb, Vb_ml, strength, Kas, Kw) => {
+                const Va = Va_ml / 1000, Vb = Vb_ml / 1000;
+                if (strength === 'strong') {
+                    const moles_a = Ca * Va, moles_b = Cb * Vb, Vt = Va + Vb;
+                    if (moles_b < moles_a) return -Math.log10((moles_a - moles_b) / Vt);
+                    if (Math.abs(moles_a - moles_b) < 1e-12) return -Math.log10(Math.sqrt(Kw));
+                    return -Math.log10(Kw / ((moles_b - moles_a) / Vt));
+                }
+                const chargeBalance = (H) => {
+                    const Vt = Va + Vb;
+                    if (Vt === 0) return H - Math.sqrt(Kas[0] * Ca); 
+                    const C_T = (Ca * Va) / Vt, C_Na = (Cb * Vb) / Vt;
+                    const alphas = calculateAlphaFractions(H, Kas);
+                    let total_anion_charge = 0;
+                    for (let i = 1; i < alphas.length; i++) total_anion_charge += i * alphas[i];
+                    total_anion_charge *= C_T;
+                    return H + C_Na - (Kw / H) - total_anion_charge;
+                };
+                let h_min = 1e-15, h_max = 10.0;
+                if (chargeBalance(h_min) * chargeBalance(h_max) > 0) return NaN;
+                for (let i = 0; i < 100; i++) {
+                    const h_mid = (h_min + h_max) / 2;
+                    if (h_mid === h_min || h_mid === h_max) break;
+                    (chargeBalance(h_mid) * chargeBalance(h_min) > 0) ? h_min = h_mid : h_max = h_mid;
+                }
+                return -Math.log10((h_min + h_max) / 2);
+            };
+
+            const calculateDataPoints = (params, maxVolume) => {
+                const { Ca, Va, Cb, analyteType, analyteStrength, Kas, Kw } = params;
+                const phData = [], numIntervals = 1200, step = maxVolume > 0 ? maxVolume / numIntervals : 0;
+                const numSpecies = analyteStrength === 'weak' ? Kas.length + 1 : 0;
+                const speciationData = Array.from({ length: numSpecies }, () => []);
+                for (let i = 0; i <= numIntervals; i++) {
+                    const Vb_ml = i * step;
+                    let pH, pOH;
+                    if (analyteType === 'acid') {
+                        pH = calculatePhForAcidTitration(Ca, Va, Cb, Vb_ml, analyteStrength, Kas, Kw);
+                    } else {
+                        pOH = calculatePhForAcidTitration(Ca, Va, Cb, Vb_ml, analyteStrength, Kas, Kw);
+                        pH = -Math.log10(Kw) - pOH;
+                    }
+                    if (!isNaN(pH)) {
+                        phData.push({ x: Vb_ml, y: pH });
+                        if (analyteStrength === 'weak') {
+                            const H = Math.pow(10, -pH);
+                            let kasForSpeciation = (analyteType === 'base') ? [...Kas].reverse().map(kb => Kw / kb) : Kas;
+                            const alphas = calculateAlphaFractions(H, kasForSpeciation);
+                            alphas.forEach((alpha, j) => speciationData[j].push({ x: Vb_ml, y: alpha }));
+                        }
+                    }
+                }
+                return { phData, speciationData };
+            };
+
+            const generateLabel = (params, isCurrent) => {
+                const { Ca, Va, analyteType, analyteStrength, Kas } = params;
+                const typeStr = analyteType === 'acid' ? 'Ácido' : 'Base';
+                const strengthStr = analyteStrength === 'strong' ? 'fuerte' : 'débil';
+                let label = `${isCurrent ? 'Actual: ' : ''}${typeStr} ${strengthStr} (${Ca.toString().replace('.',',')} M; ${Va.toString().replace('.',',')} mL)`;
+                if (analyteStrength === 'weak' && Kas.length > 0) {
+                    let constType = analyteType === 'acid' ? 'Ka' : 'Kb';
+                    if (Kas.length > 1) constType += 's';
+                    label += ` ${constType}: ${Kas.map(k => k.toExponential(2).replace('.',',')).join('; ')}`;
+                }
+                return label;
+            };
+            
+            const getCurrentParams = () => {
+                 const params = {
+                    Ca: parseInput('analyte-conc'), Va: parseInput('analyte-vol'), Cb: parseInput('titrant-conc'),
+                    analyteType: document.getElementById('analyte-type').value,
+                    analyteStrength: document.getElementById('analyte-strength').value,
+                    Kw: parseInput('kw-input'), Kas: []
+                };
+                if (isNaN(params.Ca) || isNaN(params.Va) || isNaN(params.Cb) || params.Ca <= 0 || params.Va <= 0 || params.Cb <= 0) throw new Error("Concentraciones y volumen deben ser números positivos.");
+                if (isNaN(params.Kw) || params.Kw <= 0) throw new Error("Valor de Kw inválido.");
+                if (params.analyteStrength === 'weak') {
+                    for (let i = 1; i <= kaCount; i++) {
+                        const kaVal = parseInput(`ka${i}`);
+                        if (isNaN(kaVal) || kaVal <= 0) throw new Error(`Valor de K inválido para la constante ${i}.`);
+                        params.Kas.push(kaVal);
+                    }
+                    params.Kas.sort((a, b) => b - a);
+                }
+                return params;
+            };
+
+            const redrawAllCurves = (changedInputId = 'init') => {
+                if (titrationChart && titrationChart.data.datasets.length > 0) {
+                    const currentCurve = titrationChart.data.datasets[titrationChart.data.datasets.length - 1];
+                    if (currentCurve && currentCurve.label.startsWith('Actual:')) previousCurrentData = [...currentCurve.data];
+                }
+                errorMessageEl.textContent = '';
+                updateUI();
+                let currentParams;
+                try {
+                    currentParams = getCurrentParams();
+                } catch (e) {
+                    errorMessageEl.textContent = "Error: " + e.message;
+                    titrationChart.data.datasets = [];
+                    speciationChart.data.datasets = [];
+                    titrationChart.update();
+                    speciationChart.update();
+                    return;
+                }
+                let max_V_eq_final = 0;
+                const getVeq = (p) => (p.Ca * p.Va / p.Cb) * (p.analyteStrength === 'weak' ? p.Kas.length : 1);
+                max_V_eq_final = getVeq(currentParams);
+                savedSimulations.forEach(sim => {
+                    const Veq = getVeq(sim.params);
+                    if (Veq > max_V_eq_final) max_V_eq_final = Veq;
+                });
+                const maxVolumeForCalc = max_V_eq_final * 2 > 0 ? max_V_eq_final * 2 : 100;
+                titrationChart.options.scales.x.max = maxVolumeForCalc;
+                speciationChart.options.scales.x.max = maxVolumeForCalc;
+                
+                titrationChart.data.datasets = savedSimulations.map(sim => {
+                    const { phData } = calculateDataPoints(sim.params, maxVolumeForCalc);
+                    return { label: sim.label, data: phData, borderColor: sim.color, backgroundColor: sim.color, borderWidth: 3, showLine: true, animation: { duration: 0 } };
+                });
+                
+                const { phData, speciationData } = calculateDataPoints(currentParams, maxVolumeForCalc);
+                const currentDataset = { label: generateLabel(currentParams, true), data: [], borderColor: 'white', backgroundColor: 'white', borderDash: [5, 5], borderWidth: 2, showLine: true };
+                titrationChart.data.datasets.push(currentDataset);
+                titrationChart.update('none'); 
+
+                const horizontalAnimationIds = ['analyte-conc', 'analyte-vol', 'titrant-conc'];
+                const animationType = horizontalAnimationIds.includes(changedInputId) ? 'horizontal' : 'vertical';
+                animateCurveTransition(previousCurrentData, phData, currentDataset, titrationChart, animationType);
+
+                speciationChart.data.datasets = [];
+                if (currentParams.analyteStrength === 'weak') {
+                    const speciesLabels = generateSpeciesLabels(currentParams);
+                    speciationData.forEach((speciesPoints, i) => {
+                        speciationChart.data.datasets.push({ label: speciesLabels[i], data: speciesPoints, borderColor: speciationColors[i % speciationColors.length], backgroundColor: speciationColors[i % speciationColors.length] + '4D', borderWidth: 1.5, pointRadius: 0, fill: true, showLine: true });
+                    });
+                }
+                speciationChart.update();
+            };
+
+            const generateSpeciesLabels = (params) => {
+                const { analyteType, analyteStrength, Kas } = params;
+                if (analyteStrength === 'strong') return analyteType === 'acid' ? ['HA', 'A⁻'] : ['B', 'BH⁺'];
+                const numSpecies = Kas.length + 1, labels = [];
+                if (analyteType === 'acid') {
+                    for (let i = 0; i < numSpecies; i++) {
+                        const H_count = numSpecies - 1 - i, chargeMagnitude = i;
+                        let charge = (chargeMagnitude === 1) ? '⁻' : (chargeMagnitude > 1) ? `${toSuperscript(chargeMagnitude)}⁻` : '';
+                        labels.push(`${H_count > 0 ? 'H' : ''}${H_count > 1 ? H_count : ''}A${charge}`);
+                    }
+                } else {
+                     for (let i = 0; i < numSpecies; i++) {
+                        const H_count = i, chargeMagnitude = i;
+                        let charge = (chargeMagnitude === 1) ? '⁺' : (chargeMagnitude > 1) ? `${toSuperscript(chargeMagnitude)}⁺` : '';
+                        labels.push(`${H_count > 0 ? 'H' : ''}${H_count > 1 ? H_count : ''}B${charge}`);
+                    }
+                    labels.reverse();
+                }
+                return labels;
+            };
+            
+            const addCurrentSimulationToChart = () => {
+                try {
+                    const params = getCurrentParams();
+                    const label = generateLabel(params, false);
+                    savedSimulations.push({ params, label, color: colors[savedCurveColorIndex % colors.length] });
+                    savedCurveColorIndex++;
+                    previousCurrentData = [];
+                    redrawAllCurves('add-to-chart-btn');
+                } catch (e) {
+                    errorMessageEl.textContent = "Error al añadir: " + e.message;
+                }
+            };
+
+            const clearChart = () => {
+                savedSimulations = []; 
+                savedCurveColorIndex = 0;
+                previousCurrentData = [];
+                redrawAllCurves('clear-btn');
+            };
+            
+            const initCharts = () => {
+                titrationChart = new Chart(titrationCtx, {
+                    type: 'scatter', data: { datasets: [] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear', position: 'bottom',
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                ticks: { color: '#9ca3af', display: true },
+                                min: 0,
+                                title: { display: true, text: 'Volumen de titulante (mL)', font: { size: 16 }, color: '#9ca3af' }
+                            },
+                            y: { title: { display: true, text: 'pH', font: { size: 16 }, color: '#9ca3af' }, min: 0, max: 14, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#9ca3af' } }
+                        },
+                        plugins: { legend: { position: 'top', labels: { color: '#d1d5db' } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: (c) => `pH ${c.parsed.y.toFixed(2).replace('.',',')} at ${c.parsed.x.toFixed(2).replace('.',',')} mL` } } },
+                        elements: { line: { tension: 0.1 }, point: { radius: 0 } }
+                    }
+                });
+                speciationChart = new Chart(speciationCtx, {
+                    type: 'line', data: { datasets: [] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                        scales: {
+                            x: { 
+                                type: 'linear', position: 'bottom',
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                ticks: { color: '#9ca3af' },
+                                min: 0,
+                                title: { display: true, text: 'Volumen de titulante (mL)', font: { size: 16 }, color: '#9ca3af' }
+                            },
+                            y: { title: { display: true, text: 'Fracción de especie', font: { size: 12 }, color: '#9ca3af' }, min: 0, max: 1, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#9ca3af' } }
+                        },
+                        plugins: { legend: { position: 'top', labels: { color: '#d1d5db', boxWidth: 20, padding: 20 } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: (c) => `${c.dataset.label}: ${(c.parsed.y * 100).toFixed(1).replace('.',',')}%` } } },
+                        elements: { line: { tension: 0.1 }, point: { radius: 0 } }
+                    }
+                });
+            };
+
+            // --- EJECUCIÓN INICIAL ---
+            controlForm.addEventListener('input', (event) => redrawAllCurves(event.target.id));
+            document.getElementById('add-to-chart-btn').addEventListener('click', addCurrentSimulationToChart);
+            document.getElementById('clear-btn').addEventListener('click', clearChart);
+            showSpeciationCheckbox.addEventListener('change', (e) => toggleSpeciationChart(e.target.checked));
+
+            addKaBtn.addEventListener('click', () => {
+                kaCount++;
+                const newInputDiv = document.createElement('div');
+                newInputDiv.className = 'flex items-center gap-2 mb-2';
+                newInputDiv.id = `ka-input-div-${kaCount}`;
+                const newLabel = document.createElement('label');
+                newLabel.id = `ka${kaCount}-label`;
+                newLabel.className = 'block text-sm font-medium w-10';
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.id = `ka${kaCount}`;
+                newInput.value = '1e-7';
+                newInput.className = 'w-full bg-gray-700 border border-gray-600 rounded-md p-2';
+                newInputDiv.appendChild(newLabel);
+                newInputDiv.appendChild(newInput);
+                kaInputsContainerEl.appendChild(newInputDiv);
+                removeKaBtn.classList.remove('hidden');
+                updateKaLabels(document.getElementById('analyte-type').value);
+                redrawAllCurves('add-ka');
+            });
+
+            removeKaBtn.addEventListener('click', () => {
+                if (kaCount > 1) {
+                    const divToRemove = document.getElementById(`ka-input-div-${kaCount}`);
+                    divToRemove.remove();
+                    kaCount--;
+                    if (kaCount === 1) removeKaBtn.classList.add('hidden');
+                    updateKaLabels(document.getElementById('analyte-type').value);
+                    redrawAllCurves('remove-ka');
+                }
+            });
+
+            initCharts();
+            redrawAllCurves('init');
+        });
+    </script>
+</body>
+</html>
